@@ -1,16 +1,26 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
+import {
+  StyleSheet,
+  Text,
+  View,
+  TextInput,
+  TouchableOpacity,
+  ActivityIndicator,
+  Animated,
+  Dimensions,
+} from 'react-native';
 import axios from 'axios';
 
 const App = () => {
-  const [city, setCity] = useState(''); // Kullanıcının gireceği şehir
-  const [weather, setWeather] = useState(null); // Hava durumu verileri
-  const [loading, setLoading] = useState(false); // Yüklenme durumu
-  const [error, setError] = useState(null); // Hata mesajları
+  const [city, setCity] = useState('');
+  const [weather, setWeather] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [animationValues, setAnimationValues] = useState([]);
 
-  const API_KEY = 'dee5f16f4bd70aaa85be93af05ba0350'; // OpenWeatherMap API anahtarınızı buraya ekleyin
+  const API_KEY = 'dee5f16f4bd70aaa85be93af05ba0350';
+  const SCREEN_HEIGHT = Dimensions.get('window').height;
 
-  // Hava durumu verisini çekme fonksiyonu
   const fetchWeather = async () => {
     if (!city) return;
 
@@ -22,12 +32,36 @@ const App = () => {
         `https://api.openweathermap.org/data/2.5/weather?q=${city}&units=metric&appid=${API_KEY}`
       );
       setWeather(response.data);
+      startAnimation(response.data.weather[0].description);
     } catch (err) {
       setError('City not found. Please try again.');
       setWeather(null);
     } finally {
       setLoading(false);
     }
+  };
+
+  const startAnimation = (description) => {
+    const emoji = getWeatherEmoji(description);
+    const animations = Array.from({ length: 10 }, () => new Animated.Value(-50));
+
+    setAnimationValues(animations);
+
+    animations.forEach((anim, index) => {
+      Animated.timing(anim, {
+        toValue: SCREEN_HEIGHT,
+        duration: 3000 + index * 200, // Her emoji için farklı zamanlama
+        useNativeDriver: true,
+      }).start();
+    });
+  };
+
+  const getWeatherEmoji = (description) => {
+    if (description.includes('cloud')) return '☁️';
+    if (description.includes('rain')) return '🌧️';
+    if (description.includes('snow')) return '❄️';
+    if (description.includes('sun')) return '☀️';
+    return '🌍'; // Genel emoji
   };
 
   return (
@@ -47,7 +81,9 @@ const App = () => {
       {error && <Text style={styles.error}>{error}</Text>}
       {weather && (
         <View style={styles.weatherContainer}>
-          <Text style={styles.weatherText}>City: {weather.name}</Text>
+          <Text style={styles.weatherText}>
+            {getWeatherEmoji(weather.weather[0].description)} {weather.name}
+          </Text>
           <Text style={styles.weatherText}>
             Temperature: {weather.main.temp}°C
           </Text>
@@ -56,6 +92,22 @@ const App = () => {
           </Text>
         </View>
       )}
+      {animationValues.map((anim, index) => (
+        <Animated.View
+          key={index}
+          style={[
+            styles.emoji,
+            {
+              transform: [{ translateY: anim }],
+              left: Math.random() * Dimensions.get('window').width, // Emojilerin yatay pozisyonunu rastgele yapıyoruz
+            },
+          ]}
+        >
+          <Text style={styles.emojiText}>
+            {weather ? getWeatherEmoji(weather.weather[0].description) : '🌍'}
+          </Text>
+        </Animated.View>
+      ))}
     </View>
   );
 };
@@ -66,11 +118,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-    backgroundColor: '#4e9dff', // Hava durumu uygulaması için mavi tonları
+    backgroundColor: '#4e9dff',
   },
   title: {
     fontSize: 30,
-    fontFamily: 'Roboto-Bold', // Modern bir font
+    fontFamily: 'Roboto-Bold',
     color: '#fff',
     marginBottom: 20,
   },
@@ -92,12 +144,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
     borderRadius: 8,
     marginBottom: 20,
-    elevation: 5, // Butonun gölgelendirilmesi için
+    elevation: 5,
   },
   buttonText: {
     color: '#fff',
     fontSize: 18,
-    fontFamily: 'Roboto-Medium', // Buton yazısı için modern bir font
+    fontFamily: 'Roboto-Medium',
   },
   error: {
     color: '#f00',
@@ -112,7 +164,14 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#fff',
     marginVertical: 5,
-    fontFamily: 'Roboto-Regular', // Hava durumu metinleri için farklı bir font
+    fontFamily: 'Roboto-Regular',
+  },
+  emoji: {
+    position: 'absolute',
+    top: 0,
+  },
+  emojiText: {
+    fontSize: 40,
   },
 });
 
